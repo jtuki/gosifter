@@ -30,24 +30,6 @@ var sifterCache struct {
 	m map[reflect.Type]cachedSifter
 }
 
-// api function
-//
-// @param
-//  s - 需要执行筛选/脱敏的结构体对象
-//  clevel - 最高允许的安全等级（高于此等级的将被筛除）
-func SiftStruct(s interface{}, clevel int) (map[string]interface{}, error) {
-	rt := reflect.TypeOf(s)
-	if rt.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("invalid param type %v", rt.Kind())
-	}
-
-	if cs, err := getSifter(rt); err != nil {
-		return nil, err
-	} else {
-		return cs.SiftStruct(s, clevel)
-	}
-}
-
 type sifterItemCtx struct {
 	rv reflect.Value // si索引指向的所属的值（reflect value），即可以通过 rv.Field(si.index) 获取值
 	in []string      // 嵌入结构体的父层结构体名称列表（忽略所有的 anonymous）；如果没有父层结构则是 nil
@@ -140,7 +122,7 @@ func (si *sifterItem) String() string {
 }
 
 // 针对某一个具体的结构体类型获取缓存的 sifter；如果不存在则将尝试新建对应的 sifter。
-func getSifter(rt reflect.Type) (cachedSifter, error) {
+func GetSifter(rt reflect.Type) (cachedSifter, error) {
 	sifterCache.RLock()
 	cs, cached := sifterCache.m[rt]
 	sifterCache.RUnlock()
