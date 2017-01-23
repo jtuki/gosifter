@@ -6,6 +6,43 @@ import (
 	"encoding/json"
 )
 
+// @param
+//  name - name separator 用于输出
+//  s - 原始数据存在的对象
+//  us1 us2 - 用于 unmarshal 操作的对象
+func compareMarshallerResult(t *testing.T, name string, s interface{}, us1, us2 interface{}) {
+	fmt.Printf("=== %s ===\n", name)
+	
+	// 原始的 json marshal 结果
+	var jsonBytes, siftBytes []byte
+	var siftedMap map[string]interface{}
+	var err error
+	if jsonBytes, err = json.Marshal(s); err != nil {
+		t.Fatal(err)
+	} else {
+		fmt.Printf("original json s1: %s\n", jsonBytes)
+	}
+
+	// 筛过之后的 json marshal 结果
+	if siftedMap, err = SiftStruct(s); err != nil {
+		t.Fatal(err)
+	} else {
+		fmt.Println("siftedS1:", siftedMap)
+		if siftBytes, err = json.Marshal(siftedMap); err != nil {
+			t.Fatal(err)
+		} else {
+			fmt.Printf("siftedS1 json: %s\n", siftBytes)
+		}
+	}
+	
+	if err = json.Unmarshal(jsonBytes, us1); err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal(siftBytes, us2); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSiftStruct(t *testing.T) {
 	type T uint64
 	type S1 struct {
@@ -31,8 +68,6 @@ func TestSiftStruct(t *testing.T) {
 		S25 float64 `json:"s_25"`
 	}
 
-
-	fmt.Println("=== S1 ===")
 	s1 := S1{
 		s11_lowercase: "s11_lowercase",
 		s11_lowercase2: "s11_lowercase2",
@@ -45,26 +80,17 @@ func TestSiftStruct(t *testing.T) {
 		S14: T(666),
 	}
 
-	// 原始的 json marshal 结果
-	if originalJson, err := json.Marshal(s1); err != nil {
-		t.Fatal(err)
-	} else {
-		fmt.Printf("original json s1: %s\n", originalJson)
-	}
-
-	// 筛过之后的 json marshal 结果
-	if siftedS1, err := SiftStruct(s1); err != nil {
-		t.Fatal(err)
-	} else {
-		fmt.Println("siftedS1:", siftedS1)
-		if jsonBytes, err := json.Marshal(siftedS1); err != nil {
-			t.Fatal(err)
+	func() {
+		var us1, us2 S1
+		compareMarshallerResult(t, "s1", s1, &us1, &us2)
+		if us1 != us2 {
+			t.Fatalf("unmarshal: not the same")
 		} else {
-			fmt.Printf("siftedS1 json: %s\n", jsonBytes)
+			fmt.Printf("unmarshal: us1[%+v]\n", us1)
+			fmt.Printf("unmarshal: us2[%+v]\n", us2)
 		}
-	}
+	}()
 
-	fmt.Println("=== S2 ===")
 	s2 := S2{
 		S21: "S21_value",
 		S22: int32(1666),
@@ -74,22 +100,14 @@ func TestSiftStruct(t *testing.T) {
 	}
 	s2.S1 = s1
 
-	// 原始的 json marshal 结果
-	if originalJson, err := json.Marshal(s2); err != nil {
-		t.Fatal(err)
-	} else {
-		fmt.Printf("original json s2: %s\n", originalJson)
-	}
-	
-	// 筛过之后的 json marshal 结果
-	if siftedS2, err := SiftStruct(s2); err != nil {
-		t.Fatal(err)
-	} else {
-		fmt.Println("siftedS2:", siftedS2)
-		if jsonBytes, err := json.Marshal(siftedS2); err != nil {
-			t.Fatal(err)
+	func() {
+		var us1, us2 S2
+		compareMarshallerResult(t, "s2", s2, &us1, &us2)
+		if us1 != us2 {
+			t.Fatalf("unmarshal: not the same")
 		} else {
-			fmt.Printf("siftedS2 json: %s\n", jsonBytes)
+			fmt.Printf("unmarshal: us1[%+v]\n", us1)
+			fmt.Printf("unmarshal: us2[%+v]\n", us2)
 		}
-	}
+	}()
 }
