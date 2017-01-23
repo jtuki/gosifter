@@ -2,8 +2,8 @@ package api
 
 import (
 	"fmt"
-	"reflect"
 	gosifter "github.com/jtuki/gosifter/src"
+	"reflect"
 )
 
 // api function
