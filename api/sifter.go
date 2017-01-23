@@ -50,14 +50,14 @@ func SiftStruct(s interface{}, clevel int) (map[string]interface{}, error) {
 
 type sifterItemCtx struct {
 	rv reflect.Value // si索引指向的所属的值（reflect value），即可以通过 rv.Field(si.index) 获取值
-	in []string       // 嵌入结构体的父层结构体名称列表（忽略所有的 anonymous）；如果没有父层结构则是 nil
+	in []string      // 嵌入结构体的父层结构体名称列表（忽略所有的 anonymous）；如果没有父层结构则是 nil
 	si *sifterItem
 }
 
 func (cs *cachedSifter) SiftStruct(s interface{}, maxConfidentialLevel int) (map[string]interface{}, error) {
 	// root reflect value (value of @param s)
 	rrv := reflect.ValueOf(s)
-	
+
 	siList := make([]sifterItemCtx, 0, len(cs.sifterItems))
 	for _, si := range cs.sifterItems {
 		siList = append(siList, sifterItemCtx{
@@ -68,27 +68,27 @@ func (cs *cachedSifter) SiftStruct(s interface{}, maxConfidentialLevel int) (map
 	}
 
 	// fmt.Printf("cachedSifter[%s]\n", cs)
-	
+
 	out := make(map[string]interface{}) // 最终的输出
 	for idx := 0; idx < len(siList); idx++ {
 		if idx > MAX_JSON_FIELD_NUMBER {
 			return nil, fmt.Errorf("abort due to too many json fields (limit %d)", MAX_JSON_FIELD_NUMBER)
 		}
-		
+
 		// current reflect value, parents' in list, sifter item
 		curRv, curIn, curSi := siList[idx].rv, siList[idx].in, siList[idx].si
-		
+
 		if !curRv.Field(curSi.index).IsValid() || (curSi.isOmitEmpty && isEmptyValue(curRv.Field(curSi.index))) {
 			continue
 		}
-		
+
 		// 按照安全级别筛选域
 		if curSi.cLevel > maxConfidentialLevel {
 			continue
 		}
-		
+
 		// fmt.Printf("curSi[%s]\n", curSi)
-		
+
 		if curSi.embedded == nil {
 			// 处理非嵌入式结构体域的情况（按照 curIn 将值放在合适的节点上）
 			end := out
@@ -104,7 +104,7 @@ func (cs *cachedSifter) SiftStruct(s interface{}, maxConfidentialLevel int) (map
 			if !curSi.isAnonymous || (curSi.alias != "") {
 				curIn = append(curIn, curSi.alias)
 			}
-			
+
 			for _, si := range curSi.embedded.sifterItems {
 				siList = append(siList, sifterItemCtx{
 					rv: curRv.Field(curSi.index),
@@ -167,7 +167,7 @@ func getSifter(rt reflect.Type) (cachedSifter, error) {
 // 根据具体的结构体类型产生特定的 sifter。
 func generateSifter(rt reflect.Type) (cachedSifter, error) {
 	sList := make([]*sifterItem, 0)
-	
+
 	for i := 0; i < rt.NumField(); i++ {
 		si := &sifterItem{
 			index:       i,
@@ -196,7 +196,7 @@ func generateSifter(rt reflect.Type) (cachedSifter, error) {
 		} else {
 			si.cLevel = clevel
 		}
-		
+
 		// 处理嵌套的结构体
 		if rt.Field(i).Type.Kind() == reflect.Struct {
 			// embedded sifter
@@ -304,7 +304,7 @@ func parseJsonTags(name, jtag string, isAnonymous bool) (ignore bool, alias stri
 func parseConfidentialTags(ctags string) (clevel int, err error) {
 	// default confidential level
 	clevel = CONFIDENTIAL_LEVEL0
-	
+
 	clist := strings.Split(ctags, TAG_CONFIDENTIAL_SEPARATOR)
 	switch len(clist) {
 	case 1:

@@ -1,20 +1,20 @@
 package api
 
 import (
-	"testing"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"testing"
 )
 
 // 先序列化再反序列化
-// 
+//
 // @param
 //  name - name separator 用于输出
 //  s - 原始数据存在的对象
 //  us1 us2 - 用于 unmarshal 操作的对象
 func marshalThenUnmarshal(t *testing.T, name string, s interface{}, us1, us2 interface{}) {
 	fmt.Printf("=== %s ===\n", name)
-	
+
 	// 原始的 json marshal 结果
 	var jsonBytes, siftBytes []byte
 	var siftedMap map[string]interface{}
@@ -36,7 +36,7 @@ func marshalThenUnmarshal(t *testing.T, name string, s interface{}, us1, us2 int
 			fmt.Printf("siftedS1 json: %s\n", siftBytes)
 		}
 	}
-	
+
 	if err = json.Unmarshal(jsonBytes, us1); err != nil {
 		t.Fatal(err)
 	}
@@ -59,13 +59,13 @@ func TestSiftStruct(t *testing.T) {
 		S13 float64 `json:"-"`
 		S14 T       `json:",omitempty"`
 	}
-	
+
 	s1 := S1{
-		s11_lowercase: "s11_lowercase",
+		s11_lowercase:  "s11_lowercase",
 		s11_lowercase2: "s11_lowercase2",
 		s11_lowercase3: "s11_lowercase3",
 		s11_lowercase4: "s11_lowercase4",
-		
+
 		S11: "S11_value",
 		S12: int32(666),
 		S13: float64(666.666),
@@ -83,8 +83,8 @@ func TestSiftStruct(t *testing.T) {
 		}
 	}()
 
-	// 
-	
+	//
+
 	type S2 struct {
 		S1 `json:"s1_struct"`
 
