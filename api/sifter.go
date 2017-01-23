@@ -93,7 +93,7 @@ func (cs *cachedSifter) SiftStruct(s interface{}) (map[string]interface{}, error
 			end[curSi.alias] = curRv.Field(curSi.index).Interface()
 		} else {
 			// 处理嵌入式结构体的情况（将嵌入式域依次写FIFO等待处理）
-			if !curSi.isAnonymous {
+			if !curSi.isAnonymous || (curSi.alias != "") {
 				curIn = append(curIn, curSi.alias)
 			}
 			
@@ -173,7 +173,7 @@ func generateSifter(rt reflect.Type) (cachedSifter, error) {
 		}
 
 		// 处理 json 标签
-		if ignore, alias, omitempty, err := parseJsonTags(si.field, rt.Field(i).Tag.Get("json")); err != nil {
+		if ignore, alias, omitempty, err := parseJsonTags(si.field, rt.Field(i).Tag.Get("json"), si.isAnonymous); err != nil {
 			return cachedSifter{}, err
 		} else if ignore {
 			continue
@@ -211,15 +211,17 @@ func generateSifter(rt reflect.Type) (cachedSifter, error) {
 // @param
 //  name - 结构体成员名称
 //  jtag - json 标签字符串
+//  isAnonymous - 是否是匿名域
 // @return
 //  ignore  - 是否在序列化过程中忽略此项成员（如：明确指定 `json:"-"` 或者首字母小写的非公开成员）
 //  alias - 序列化时采用的别名，可能是 json 标签设置的别名，也可能是结构体域名称
 //  omitempty - 当值为空时是否进行序列化
 //
 // Note:
-//  值为空的判定参考 json 标准库的文档：
+//  1. 值为空的判定参考 json 标准库的文档：
 //  false, 0, nil pointer or interface value, and any array, slice, map, or string of length zero
-func parseJsonTags(name, jtag string) (ignore bool, alias string, omitempty bool, err error) {
+//  2. 仅支持匿名域类型是结构体的场景。
+func parseJsonTags(name, jtag string, isAnonymous bool) (ignore bool, alias string, omitempty bool, err error) {
 	// go struct field visibility
 	if len(name) == 0 || unicode.IsLower(rune(name[0])) {
 		ignore = true
@@ -233,7 +235,10 @@ func parseJsonTags(name, jtag string) (ignore bool, alias string, omitempty bool
 			ignore = true
 			return
 		} else {
-			alias = name
+			// 如果是匿名域且没有指定 json tag，那么别名将为空
+			if !isAnonymous {
+				alias = name
+			}
 			return
 		}
 	case 1:
@@ -258,7 +263,9 @@ func parseJsonTags(name, jtag string) (ignore bool, alias string, omitempty bool
 				ignore = true
 				return
 			} else {
-				alias = name
+				if !isAnonymous {
+					alias = name
+				}
 				omitempty = true
 				return
 			}

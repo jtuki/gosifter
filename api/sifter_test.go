@@ -3,6 +3,7 @@ package api
 import (
 	"testing"
 	"fmt"
+	"encoding/json"
 )
 
 func TestSiftStruct(t *testing.T) {
@@ -21,7 +22,7 @@ func TestSiftStruct(t *testing.T) {
 	}
 	
 	type S2 struct {
-		S1
+		S1 `json:"s1_struct"`
 
 		S21 string  `json:"s_21"`
 		S22 int32   `json:"s_22,omitempty"`
@@ -43,8 +44,25 @@ func TestSiftStruct(t *testing.T) {
 		S13: float64(666.666),
 		S14: T(666),
 	}
-	
-	fmt.Println(SiftStruct(s1))
+
+	// 原始的 json marshal 结果
+	if originalJson, err := json.Marshal(s1); err != nil {
+		t.Fatal(err)
+	} else {
+		fmt.Printf("original json s1: %s\n", originalJson)
+	}
+
+	// 筛过之后的 json marshal 结果
+	if siftedS1, err := SiftStruct(s1); err != nil {
+		t.Fatal(err)
+	} else {
+		fmt.Println("siftedS1:", siftedS1)
+		if jsonBytes, err := json.Marshal(siftedS1); err != nil {
+			t.Fatal(err)
+		} else {
+			fmt.Printf("siftedS1 json: %s\n", jsonBytes)
+		}
+	}
 
 	fmt.Println("=== S2 ===")
 	s2 := S2{
@@ -56,5 +74,22 @@ func TestSiftStruct(t *testing.T) {
 	}
 	s2.S1 = s1
 
-	fmt.Println(SiftStruct(s2))
+	// 原始的 json marshal 结果
+	if originalJson, err := json.Marshal(s2); err != nil {
+		t.Fatal(err)
+	} else {
+		fmt.Printf("original json s2: %s\n", originalJson)
+	}
+	
+	// 筛过之后的 json marshal 结果
+	if siftedS2, err := SiftStruct(s2); err != nil {
+		t.Fatal(err)
+	} else {
+		fmt.Println("siftedS2:", siftedS2)
+		if jsonBytes, err := json.Marshal(siftedS2); err != nil {
+			t.Fatal(err)
+		} else {
+			fmt.Printf("siftedS2 json: %s\n", jsonBytes)
+		}
+	}
 }
