@@ -31,7 +31,11 @@ var sifterCache struct {
 }
 
 // api function
-func SiftStruct(s interface{}) (map[string]interface{}, error) {
+//
+// @param
+//  s - 需要执行筛选/脱敏的结构体对象
+//  clevel - 最高允许的安全等级（高于此等级的将被筛除）
+func SiftStruct(s interface{}, clevel int) (map[string]interface{}, error) {
 	rt := reflect.TypeOf(s)
 	if rt.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("invalid param type %v", rt.Kind())
@@ -40,7 +44,7 @@ func SiftStruct(s interface{}) (map[string]interface{}, error) {
 	if cs, err := getSifter(rt); err != nil {
 		return nil, err
 	} else {
-		return cs.SiftStruct(s)
+		return cs.SiftStruct(s, clevel)
 	}
 }
 
@@ -50,7 +54,7 @@ type sifterItemCtx struct {
 	si *sifterItem
 }
 
-func (cs *cachedSifter) SiftStruct(s interface{}) (map[string]interface{}, error) {
+func (cs *cachedSifter) SiftStruct(s interface{}, maxConfidentialLevel int) (map[string]interface{}, error) {
 	// root reflect value (value of @param s)
 	rrv := reflect.ValueOf(s)
 	
@@ -66,7 +70,6 @@ func (cs *cachedSifter) SiftStruct(s interface{}) (map[string]interface{}, error
 	// fmt.Printf("cachedSifter[%s]\n", cs)
 	
 	out := make(map[string]interface{}) // 最终的输出
-	 // 遍历列表的 index 序列号
 	for idx := 0; idx < len(siList); idx++ {
 		if idx > MAX_JSON_FIELD_NUMBER {
 			return nil, fmt.Errorf("abort due to too many json fields (limit %d)", MAX_JSON_FIELD_NUMBER)
@@ -76,6 +79,11 @@ func (cs *cachedSifter) SiftStruct(s interface{}) (map[string]interface{}, error
 		curRv, curIn, curSi := siList[idx].rv, siList[idx].in, siList[idx].si
 		
 		if !curRv.Field(curSi.index).IsValid() || (curSi.isOmitEmpty && isEmptyValue(curRv.Field(curSi.index))) {
+			continue
+		}
+		
+		// 按照安全级别筛选域
+		if curSi.cLevel > maxConfidentialLevel {
 			continue
 		}
 		
@@ -182,7 +190,12 @@ func generateSifter(rt reflect.Type) (cachedSifter, error) {
 			si.isOmitEmpty = omitempty
 		}
 
-		// todo - confidential level parse
+		// 处理保密/脱敏标签
+		if clevel, err := parseConfidentialTags(rt.Field(i).Tag.Get(TAG_CONFIDENTIAL)); err != nil {
+			return cachedSifter{}, err
+		} else {
+			si.cLevel = clevel
+		}
 		
 		// 处理嵌套的结构体
 		if rt.Field(i).Type.Kind() == reflect.Struct {
@@ -230,48 +243,40 @@ func parseJsonTags(name, jtag string, isAnonymous bool) (ignore bool, alias stri
 
 	jtags := strings.Split(jtag, ",")
 	switch len(jtags) {
-	case 0:
-		if unicode.IsLower(rune(name[0])) {
+	case 1:
+		t := strings.TrimSpace(jtags[0])
+		if t == "-" {
+			// `json:"-"`
 			ignore = true
 			return
+		} else if len(t) > 0 {
+			// `json:"json_alias"`
+			alias = t
+			return
 		} else {
-			// 如果是匿名域且没有指定 json tag，那么别名将为空
+			// 没有设置 json 标签
 			if !isAnonymous {
 				alias = name
 			}
 			return
 		}
-	case 1:
-		if jtags[0] == "-" {
-			// `json:"-"`
-			ignore = true
-			return
-		} else {
-			// `json:"json_alias"`
-			alias = jtags[0]
-			return
-		}
 	case 2:
-		if strings.TrimSpace(jtags[1]) != "omitempty" {
+		t0, t1 := strings.TrimSpace(jtags[0]), strings.TrimSpace(jtags[1])
+		if t1 != "omitempty" {
 			ignore = true
-			err = fmt.Errorf("json tag %s not supported", jtags[1])
+			err = fmt.Errorf("json tag %s not supported", t1)
 			return
 		}
-		if jtags[0] == "" {
+		if t0 == "" {
 			// `json:",omitempty"`
-			if unicode.IsLower(rune(name[0])) {
-				ignore = true
-				return
-			} else {
-				if !isAnonymous {
-					alias = name
-				}
-				omitempty = true
-				return
+			if !isAnonymous {
+				alias = name
 			}
+			omitempty = true
+			return
 		} else {
 			// `json:"json_alias,omitempty"`
-			alias = jtags[0]
+			alias = t0
 			omitempty = true
 			return
 		}
@@ -279,6 +284,41 @@ func parseJsonTags(name, jtag string, isAnonymous bool) (ignore bool, alias stri
 		// unsupported
 		ignore = true
 		err = fmt.Errorf("unsupported json tag string %s", jtag)
+		return
+	}
+}
+
+// 解析保密/脱敏相关的标签
+//
+//  1. 没有标签
+//  2. `confidential:"-"`
+//  3. `confidential:"level2"`
+//
+// @param
+//  ctag - 保密级别/脱敏处理标签（confidential tag）
+// @return
+//  clevel - 保密级别（confidential level）
+//
+// Note:
+//  如果没有标签或者是 `-`，那么都按照公开级别（即 level0）进行处理。
+func parseConfidentialTags(ctags string) (clevel int, err error) {
+	// default confidential level
+	clevel = CONFIDENTIAL_LEVEL0
+	
+	clist := strings.Split(ctags, TAG_CONFIDENTIAL_SEPARATOR)
+	switch len(clist) {
+	case 1:
+		clevelTag := strings.TrimSpace(clist[0])
+		switch clevelTag {
+		case "", CLEVEL_TAG_OMIT, CLEVEL_TAG_LEVEL0, CLEVEL_TAG_LEVEL1, CLEVEL_TAG_LEVEL2, CLEVEL_TAG_LEVEL3:
+			clevel = _confidential_map[clevelTag]
+			return
+		default:
+			err = fmt.Errorf("unsupported confidential level[%s]", clevelTag)
+			return
+		}
+	default:
+		err = fmt.Errorf("unsupported confidential tag[%s]", ctags)
 		return
 	}
 }

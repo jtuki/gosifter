@@ -5,7 +5,7 @@ const (
 )
 
 const (
-	TAG_CONFIDENTIAL_LEVEl = "confidential"
+	TAG_CONFIDENTIAL = "confidential"
 	TAG_CONFIDENTIAL_SEPARATOR = ","
 )
 
@@ -15,6 +15,24 @@ const (
 	CONFIDENTIAL_LEVEL1 = 1 // 保密
 	CONFIDENTIAL_LEVEL2 = 2 // 高度保密
 	CONFIDENTIAL_LEVEL3 = 3 // 绝密
+	CONFIDENTIAL_LEVEL_MAX = 1024
 )
 
+// confidential level tag
+const (
+	CLEVEL_TAG_OMIT = "-"
+	CLEVEL_TAG_LEVEL0 = "level0"
+	CLEVEL_TAG_LEVEL1 = "level1"
+	CLEVEL_TAG_LEVEL2 = "level2"
+	CLEVEL_TAG_LEVEL3 = "level3"
+)
+
+// @refer parseConfidentialTags()
+var _confidential_map map[string]int = map[string]int {
+	CLEVEL_TAG_OMIT: CONFIDENTIAL_LEVEL0,
+	CLEVEL_TAG_LEVEL0: CONFIDENTIAL_LEVEL0,
+	CLEVEL_TAG_LEVEL1: CONFIDENTIAL_LEVEL1,
+	CLEVEL_TAG_LEVEL2: CONFIDENTIAL_LEVEL2,
+	CLEVEL_TAG_LEVEL3: CONFIDENTIAL_LEVEL3,
+}
 
