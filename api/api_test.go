@@ -179,7 +179,8 @@ func TestSiftStruct(t *testing.T) {
 
 		leveldMarshal(t, "s3-level0", s3, CONFIDENTIAL_LEVEL0)
 		leveldMarshal(t, "s3-level1", s3, CONFIDENTIAL_LEVEL1)
-		leveldMarshal(t, "s3-level2", s3, CONFIDENTIAL_LEVEL2)
-		leveldMarshal(t, "s3-level3", s3, CONFIDENTIAL_LEVEL3)
+		// 使用指针类型
+		leveldMarshal(t, "s3-level2", &s3, CONFIDENTIAL_LEVEL2)
+		leveldMarshal(t, "s3-level3", &s3, CONFIDENTIAL_LEVEL3)
 	}()
 }
