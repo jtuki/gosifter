@@ -145,11 +145,15 @@ func gosifter_marshal(v interface{}) ([]byte, error) {
 	return json.Marshal(m)
 }
 
+func gosifter_marshal_transparent(v interface{}) ([]byte, error) {
+	return gosifter.Marshal(v, gosifter.CONFIDENTIAL_LEVEL_MAX)
+}
+
 const DOC_STRING = `====================================================
 Usage:
 
-./bm_tool -type [1|2]
-types: json[1], gosifter[2]
+./bm_tool -type [1|2|3]
+types: json[1], gosifter[2], gosifter_transparent[3]
 ====================================================
 `
 
@@ -157,7 +161,7 @@ func main() {
 	gl_runtime_cpu_num = runtime.NumCPU()
 	runtime.GOMAXPROCS(gl_runtime_cpu_num)
 
-	marshalType := flag.Int("type", 0, "type of marshaller to use: json[1], gosifter[2]")
+	marshalType := flag.Int("type", 0, "type of marshaller to use: json[1], gosifter[2], gosifter_transparent[3]")
 	flag.Parse()
 
 	switch *marshalType {
@@ -169,8 +173,11 @@ func main() {
 		prepare_benchmark_data_set()
 		marshal_routine(gl_runtime_cpu_num, marshal_func(gosifter_marshal))
 		return
+	case 3:
+		prepare_benchmark_data_set()
+		marshal_routine(gl_runtime_cpu_num, marshal_func(gosifter_marshal_transparent))
 	default:
-		fmt.Println("unsupported marshalType: json[1], gosifter[2]")
+		fmt.Println("unsupported marshalType: json[1], gosifter[2], gosifter_transparent[3]")
 		fmt.Println(DOC_STRING)
 		return
 	}

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	gosifter "github.com/jtuki/gosifter/src"
 	"reflect"
@@ -32,4 +33,18 @@ func SiftStruct(s interface{}, clevel int) (map[string]interface{}, error) {
 			return cs.SiftStruct(reflect.ValueOf(s).Elem().Interface(), clevel)
 		}
 	}
+}
+
+// api function
+//
+// 封装的序列化操作，返回序列化之后的结果和可能的错误。
+func Marshal(s interface{}, clevel int) ([]byte, error) {
+	if clevel == CONFIDENTIAL_LEVEL_MAX {
+		return json.Marshal(s)
+	}
+	m, err := SiftStruct(s, clevel)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(m)
 }
