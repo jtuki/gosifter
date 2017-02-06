@@ -18,7 +18,7 @@ func SiftStruct(s interface{}, clevel int) (map[string]interface{}, error) {
 		rt = rt.Elem()
 		isPtr = true
 	}
-	
+
 	if rt.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("invalid param type %v", rt.Kind())
 	}
